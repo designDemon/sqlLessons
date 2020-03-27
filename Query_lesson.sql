@@ -1195,7 +1195,7 @@ WITH CHECK OPTION;
 -- create procedures to avoid using sql queries in backend code
 
 DELIMITER $$
-	CREATE PROCEDURE get_clientss()
+	CREATE PROCEDURE get_clients()
 	BEGIN
 		SELECT * FROM clients;
 	END$$
@@ -1420,4 +1420,19 @@ FROM invoices;
 
 -- standard practise to define funtion in new sql file and save it in source control
 DROP FUNCTION IF EXISTS get_risk_for_client;
+ 
+ DELIMITER $$
+ 
+ USE sql_invoicing;
+ 
+ CREATE TRIGGER payments_after_insert
+ AFTER INSERT ON payments
+ FOR EACH ROW
+ BEGIN
+	UPDATE invoices
+    SET payment_total = payment_total + NEW.amount
+    WHERE invoice_id = New.invoice_id
+ END $$
+ 
+ DELIMITER ;
  

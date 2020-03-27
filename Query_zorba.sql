@@ -958,4 +958,8 @@ ORDER BY WW ASC, full_name ASC;
 	FROM project_lead_messages plm
 	WHERE YEAR(call_date_time) = '2020';
     -- ) plm ON pl.id= project_lead_id;
-    
+
+	SELECT *
+	FROM project_leads
+	WHERE created > modified;
+
