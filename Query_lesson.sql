@@ -1421,18 +1421,128 @@ FROM invoices;
 -- standard practise to define funtion in new sql file and save it in source control
 DROP FUNCTION IF EXISTS get_risk_for_client;
  
- DELIMITER $$
  
  USE sql_invoicing;
  
+ -- convention for naming triggers tablename_after/before_insert/delete
+ DELIMITER $$
+ DROP TRIGGER IF EXISTS payments_after_insert;
  CREATE TRIGGER payments_after_insert
  AFTER INSERT ON payments
  FOR EACH ROW
  BEGIN
 	UPDATE invoices
     SET payment_total = payment_total + NEW.amount
-    WHERE invoice_id = New.invoice_id
+    WHERE invoice_id = New.invoice_id;
  END $$
- 
  DELIMITER ;
  
+ INSERT INTO payments (
+ payment_id,
+ client_id,
+ invoice_id,
+ date,
+ amount,
+ payment_method)
+ VALUES (
+ DEFAULT,
+ 5,
+ 3,
+ '2020-03-25',
+ 102,
+ 2);
+
+DELIMITER $$
+DROP TRIGGER IF EXISTS payments_after_delete;
+CREATE TRIGGER payments_after_delete
+AFTER DELETE ON payments
+FOR EACH ROW
+BEGIN
+	UPDATE invoices
+    SET payment_total = payment_total - OLD.amount
+    WHERE invoice_id = OLD.invoice_id;
+END $$
+DELIMITER ;
+
+DELETE
+FROM payments
+WHERE payment_id IN (11,12);
+ 
+SHOW TRIGGERS LIKE '%payments';
+
+DROP TRIGGER IF EXISTS payments_after_insert;
+
+-- using triggers for auditing
+CREATE TABLE payments_audit
+(
+	client_id			INT 
+    ,date				DATE
+    ,amount				DECIMAL(9,2)
+    ,action_type			VARCHAR(50)
+    ,action_date			DATE
+);
+
+DELIMITER $$
+ DROP TRIGGER IF EXISTS payments_after_insert;
+ CREATE TRIGGER payments_after_insert
+ AFTER INSERT ON payments
+ FOR EACH ROW
+ BEGIN
+	UPDATE invoices
+    SET payment_total = payment_total + NEW.amount
+    WHERE invoice_id = New.invoice_id;
+    
+    INSERT INTO payments_audit
+    VALUES (
+    NEW.client_id 
+    , NEW.date
+    , NEW.amount
+    , 'Insert'
+    , NOW());
+ END $$
+ DELIMITER ;
+ 
+DELIMITER $$
+DROP TRIGGER IF EXISTS payments_after_delete;
+CREATE TRIGGER payments_after_delete
+AFTER DELETE ON payments
+FOR EACH ROW
+BEGIN
+	UPDATE invoices
+    SET payment_total = payment_total - OLD.amount
+    WHERE invoice_id = OLD.invoice_id;
+    
+   INSERT INTO payments_audit
+    VALUES (
+    OLD.client_id 
+    , OLD.date
+    , OLD.amount
+    , 'Delete'
+    , NOW()); 
+END $$
+DELIMITER ;
+
+SHOW VARIABLES LIKE 'event%';
+
+-- to set event scheduler off or on
+SET GLOBAL event_scheduler = OFF; 
+
+DELIMITER $$
+CREATE EVENT yearly_delete_stale_audit_rows
+ON SCHEDULE
+-- AT '2019-01-01'
+EVERY 1 YEAR STARTS '2019-01-01' ENDS '2022-01-01'
+DO
+BEGIN
+	DELETE FROM payments_audit
+    WHERE action_date = NOW() - INTERVAL 1 YEAR;
+END $$
+DELIMITER ;
+
+SHOW EVENTS;
+SHOW EVENTS LIKE '%yearly';
+DROP EVENT IF EXISTS yearly_delete_stale_audit_rows;
+-- ALTER EVENT; can be used in place to the original create event statement to make changes to the event but also to enable/disable specific events
+ALTER EVENT yearly_delete_stale_audit_rows ENABLE;
+
+    
