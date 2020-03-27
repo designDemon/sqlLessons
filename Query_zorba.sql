@@ -959,7 +959,104 @@ ORDER BY WW ASC, full_name ASC;
 	WHERE YEAR(call_date_time) = '2020';
     -- ) plm ON pl.id= project_lead_id;
 
+-- query to get table values where created date higher than modified date
 	SELECT *
 	FROM project_leads
 	WHERE created > modified;
 
+-- query to get lead details by program category
+SELECT
+	DISTINCT customer_id,
+    c.name,
+    email,
+    phone,
+    profile,
+    interest_level,
+    Major_Category,
+    Minor_Category
+FROM project_leads pl
+JOIN projects p
+	ON pl.project_id = p.id
+JOIN zorbathe_zorbath.program_grouping pg
+	USING (code)
+JOIN customers c
+	ON pl.customer_id = c.id
+WHERE start_date BETWEEN '2019-12-25' AND '2020-02-05'
+
+-- unsuccessful query to match leads with gate visitor data using partial email match
+UPDATE customers
+SET customers.email_check = zorba_visitors.EMAIL
+FROM customers
+INNER JOIN zorba_visitors 
+	ON zorba_visitors.EMAIL LIKE CONCAT('%',customers.email,'%');
+
+-- another query to match leads with gate visitor data using partial email match
+SELECT
+	c.name,
+    c.email,
+    c.phone,
+    zv.EMAIL,
+    zv.NAME,
+    zv.PHONENUMBER
+FROM customers c
+INNER JOIN zorba_visitors zv
+	ON zv.EMAIL LIKE CONCAT('%',c.email,'%');
+
+-- testing sub queries to get aggregated details of EL calling performance
+-- 1
+SELECT 
+	adminstrator_id,
+    project_lead_id,
+	COUNT(*) AS NoOfCalls	
+FROM zorbathe_zorbath2.project_lead_messages
+GROUP BY adminstrator_id,project_lead_id;
+
+-- 2 
+SELECT 
+	date(call_date_time) AS date,
+	adminstrator_id,
+	COUNT(*) AS NoOfCalls,
+	COUNT(DISTINCT project_lead_id) AS NoOfLeadsAttempted,
+    SUM(CASE 
+				WHEN status_id = 4 
+				THEN 1 ELSE 0 
+				END) AS total_calls_answered,
+FROM zorbathe_zorbath2.project_lead_messages
+GROUP BY date,adminstrator_id;
+
+-- query to aggregate lead quality by month
+SELECT	
+		monthname(start_date) AS month,
+		SUM(CASE 
+			WHEN interest_level BETWEEN 7 AND 10 
+            THEN 1 ELSE 0 
+            END) AS h_interest,
+		SUM(CASE 
+			WHEN interest_level = 9
+            THEN 1 ELSE 0 
+            END) AS PIP,
+		SUM(CASE 
+			WHEN interest_level = 10 
+            THEN 1 ELSE 0 
+            END) AS Paid
+FROM zorbathe_zorbath2.project_leads pl
+join projects p
+	ON pl.project_id = p.id
+where start_date between '2019-2-1' AND '2020-2-28'
+group by month;
+
+-- query to get program details concatenated for NAZIA's file
+SELECT 
+	CONCAT(MONTH(start_date),YEAR(start_date)) AS MMYY,
+    day(start_date) AS day,
+	CONCAT('|',name,'|',code) AS program
+    FROM projects p
+    ORDER BY YEAR(start_date) ASC,MONTH(start_date) ASC
+
+-- query to check if same leads are being called by multiple ELs
+SELECT 
+	DISTINCT project_lead_id,
+    COUNT(DISTINCT adminstrator_id) AS cnt
+    FROM zorbathe_zorbath2.project_lead_messages
+    GROUP BY project_lead_id
+    ORDER BY cnt DESC;
