@@ -1545,4 +1545,194 @@ DROP EVENT IF EXISTS yearly_delete_stale_audit_rows;
 -- ALTER EVENT; can be used in place to the original create event statement to make changes to the event but also to enable/disable specific events
 ALTER EVENT yearly_delete_stale_audit_rows ENABLE;
 
+USE sql_store;
+
+-- transaction ensures all statements before commit are executed as a block
+-- transaction is ACID : 
+	-- Atomic - executed as a block or not
+    -- Consistent - data always remains consistent
+    -- Isolated - transactions are protected from eachother if they try to act on same data
+    -- Durable - once transactions are committed the change is permanent and cannot be impacted by a power failure
+
+START TRANSACTION;
+INSERT INTO orders (customer_id, order_date, status)
+VALUES(1,'2019-01-01',1);
+
+INSERT INTO order_items
+VALUES(LAST_INSERT_ID(),1,1,1);
+COMMIT;
+
+-- used instead of commit to manually rollback last transaction
+-- ROLLBACK; 
+
+-- whenever we run an insert, delete or update statement mysql wraps it into insert and commit statements
+-- and this is controlled by system variables like auto_commit
+
+SHOW VARIABLES LIKE '%commit';
+
+-- concurrency of transactions
+-- if a transaction modifies a row or a column, it locks any other transaction from making changes to it
+-- test by opening another instance of the this database and executed below queries line by line
+USE sql_store;
+
+START TRANSACTION;
+UPDATE customers
+SET points = points + 10
+WHERE customer_id = 1;
+COMMIT;	
+
+-- concurrency problems that can occur: 
+	-- LOST UPDATES: one transaction commits before another modifying a field in the same row commits and hence those details are lost
+    -- DIRTY READS: reads a field that is not yet committed and takes action
+    -- NON-REPEATING: if we read the same data twice in a transaction but before we read it the second time it has been modifed by another transaction
+    -- PHANTOM READS: when we miss one or more rows in our data because another transaction is modifying the eligible data and we are not aware
+
+-- are handled by diffrent isolation levels:
+	-- READ UNCOMMITTED: no protection from concurrency problems
+    -- READ COMMITTED: Prevents dirty reads, but cannot avoid errors occuring when one transaciton has multiple reads inside
+    -- REPEATABLE READS: Prevents lost updates, dirty reads and non-repeating reads
+    -- SERIALIZABLE Prevents all because it makes transaction wait until all other transactions that can modify the same data have been executed
+					-- transaction waits for most recent update of data
+					-- but puts load or slowsdown the system if there are lot of concurrent transactions happening at once
+	-- lower isolation allows more concurrency but at the cost of more errors
+    -- higher isoloation level reduces concurrency but it requires more resources in the form of logs and cpu memory for scheduling transactions
+    -- default level is repeatable reads
+    
+    SHOW VARIABLES LIKE 'transaction_isolation';
+    SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+    -- suggested to use session keyword to effect the transaction isolation only to your connection instance with the database
+    SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+    -- global will change the transaction level for all other connection instance to that database
+    SET GLOBAL TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+    
+    -- see videos on isolation levels and deadlocks
+    
+    -- Data Types
+    -- STRINGS
+    -- VARCHAR(50) short strings
+    -- VARCHAR (255) medium strings
+    -- VARCHAR (65,535) max ie. 64KB
+    -- MEDIUMTEXT (16MB)
+    -- LONGTEXT (4GB)
+    -- TINYTEXT (255) 255 bytes
+    -- TEXT 64KB
+    -- ENGLISH language = 1 byte, European and Middle Easter = 2 bytes, Asian languages = 3 bytes
+    
+    -- INTEGERS
+    -- TINYINT	 			1b [-127,128]
+    -- UNSIGNED	 TINYINT	1b [0,255]
+    -- SMALLINT	 			2b [-32k, 32k]
+    -- MEDIUMINT 			3b [-8M, 8M]
+    -- INT					4b
+    -- BIGING				8b
+    
+    -- ZEROFILL 
+    -- INT(4) -> 0004
+    
+    -- RATIONALS
+    -- DECIMAL(p,s) = precision (total digits), scale(max after scale) and P<=65 and D<=30
+    -- DEC, NUMERIC, FIXED
+    -- float and double store no.s in binary exponential expression, so they can store large no.s but precison is lost
+    -- FLOAT 4b
+    -- DOUBLE 8b
+    
+    -- TRUE / FALSE => 1/0, and hence booleans are actaully tinyint
+    -- BOOL 
+    -- BOOLEAN
+    
+    -- ENUM - a set to stores limited string values... advised to make a looktable of sizes (S,M,L) instead of a enum data type
+    -- SET - stores multiple string values
+    
+    -- DATE
+    -- TIME
+    -- DATETIME 8b
+    -- TIMESTAMP 4b and can only store values till 2038
+    -- YEAR
+    
+    -- BLOBS for storing binary data like pics... but better not to store in sql db, which is for structured relational data vs binaray data
+    -- thats wastes db space, makes it slow to read and write, also additional code is needed
+    -- TINYBLOB 255b
+    -- BLOB 64kb
+    -- MEDIUMBLOB 16MB
+    -- LONGBLOB 4GB
+	
+    -- JSON OBJECT
+     
+    USE sql_store;
+    
+    UPDATE products
+    SET properties = NULL;
+    
+    -- 1st way of creating a json object 
+    UPDATE products
+    SET properties = '
+    {
+		"dimensions": [1,2,3],
+        "weight": 10,
+        "manufacturer": {"name": "sony"}
+    }'
+    WHERE product_id = 1;
+    
+-- 2nd way of creating a json object 
+    UPDATE products
+    SET properties = JSON_OBJECT(
+		'weight',10,
+        'dimensions', JSON_ARRAY(1,2,3),
+        'manufacturer', JSON_OBJECT('name', 'sony')
+        )
+    WHERE product_id = 2;
+
+    SELECT *
+    FROM products;
+    
+    -- 1 way to extract a specific value from JSON object key
+    SELECT product_id, JSON_EXTRACT(properties, '$.weight')
+    FROM products
+    WHERE product_id = 1;
+    
+    -- popular way to achieve the same result for values
+    SELECT product_id, properties -> '$.weight' AS weight
+    FROM products
+    WHERE product_id = 1;
+    
+     -- popular way to achieve the same result for values from arrays (dimension stores array type) 
+    SELECT product_id, properties -> '$.dimensions[0]' AS all_dimensions
+    FROM products
+    WHERE product_id = 1;
+    
+    -- popular way to achieve the same result for values from objects (manufacturer is a nested json object)
+    SELECT product_id, properties -> '$.manufacturer.name' AS manfac_name
+    FROM products
+    WHERE product_id = 1;
+    
+    -- above gives string value in double quotes, to get value without quotes use ->> instead of ->
+	SELECT product_id, properties ->> '$.manufacturer.name' AS manfac_name
+    FROM products
+    WHERE product_id = 1;
+    
+    -- so, then the expression can be used in where clause
+    SELECT product_id, properties ->> '$.manufacturer.name' AS manfac_name
+    FROM products
+    WHERE properties ->> '$.manufacturer.name' = 'sony';
+    
+    -- updating a JSON object to set or add key value pairs
+    UPDATE products
+    SET properties = JSON_SET(
+    properties,
+    '$.weight', 20,
+    '$.age', 12
+    )
+    WHERE product_id = 1; 
+    
+    SELECT product_id, properties
+    FROM products
+    WHERE properties ->> '$.manufacturer.name' = 'sony';
+    
+    -- updating a JSON object to remove key value pairs
+    UPDATE products
+    SET properties = JSON_REMOVE(
+    properties,
+    '$.age'
+    )
+    WHERE product_id = 1; 
     
