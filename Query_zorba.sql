@@ -1051,7 +1051,7 @@ SELECT
     day(start_date) AS day,
 	CONCAT('|',name,'|',code) AS program
     FROM projects p
-    ORDER BY YEAR(start_date) ASC,MONTH(start_date) ASC
+    ORDER BY YEAR(start_date) ASC,MONTH(start_date) ASC;
 
 -- query to check if same leads are being called by multiple ELs
 SELECT 
@@ -1060,3 +1060,15 @@ SELECT
     FROM zorbathe_zorbath2.project_lead_messages
     GROUP BY project_lead_id
     ORDER BY cnt DESC;
+
+SELECT *
+FROM project_leads pl
+JOIN customers c
+	ON pl.customer_id = c.id
+LEFT JOIN source_thread st
+	ON c.source_thread_title = st.id
+WHERE 
+	(adminstrator_id = 246 OR adminstrator_id = 267)  
+    AND source_thread_title IS NOT NULL 
+    AND (pl.source = 'Organic' or pl.source = 'Manually') 
+    AND(date(pl.created)>'2020-02-25' OR date(pl.modified)>'2020-02-25') ;
