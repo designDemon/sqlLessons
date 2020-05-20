@@ -1007,7 +1007,7 @@ SELECT LTRIM(" ass");
 SELECT RTRIM("ass  ");
 SELECT TRIM(" ass  ");
 SELECT LEFT("kindergarden", 4);
-SELECT LEFT("kindergarden", 4);
+SELECT RIGHT("kindergarden", 4);
 SELECT SUBSTRING("kindergarden",3,4);
 SELECT LOCATE("nder","kindergarden");
 SELECT REPLACE("kindergarden", "garden", "tree");
@@ -1056,7 +1056,7 @@ SELECT DATE_SUB(NOW(), INTERVAL 1 DAY);
 SELECT DATEDIFF('2019-01-05', '2019-01-01');
 -- only give difference in days and not time - write as (higher - lower) for +ve else -ve
 SELECT DATEDIFF('2019-01-05 11:00', '2019-01-01 10:00');
-SELECT time_to_sec('9:00') - time_to_sec('12:00')
+SELECT time_to_sec('9:00') - time_to_sec('12:00');
 -- to find difference in times in seconds, time_to_sec give seconds elapsed since midnight
 
 USE sql_store;
@@ -1193,7 +1193,7 @@ WITH CHECK OPTION;
 -- benefits of views: simplify queries, reduces impact of changes to underlying tables, restricts access to data
 
 -- create procedures to avoid using sql queries in backend code
-
+-- we use delimiter to change the default delimiter so taht sql treats the content in betwen as one block
 DELIMITER $$
 	CREATE PROCEDURE get_clients()
 	BEGIN
@@ -1215,6 +1215,7 @@ DELIMITER $$
 DELIMITER ;
 
 -- good standard practise to store each new procedure in a new sql file and then save it with a version control software like git
+--  if that is not done, to update a procedure you will need to click the spanner icon on the procedure and make changes there
 DROP PROCEDURE IF EXISTS get_inovoices_with_balance;
 DELIMITER $$
 	CREATE PROCEDURE get_inovoices_with_balance()
@@ -1478,8 +1479,8 @@ CREATE TABLE payments_audit
 	client_id			INT 
     ,date				DATE
     ,amount				DECIMAL(9,2)
-    ,action_type			VARCHAR(50)
-    ,action_date			DATE
+    ,action_type		VARCHAR(50)
+    ,action_date		DATE
 );
 
 DELIMITER $$
@@ -1547,6 +1548,7 @@ ALTER EVENT yearly_delete_stale_audit_rows ENABLE;
 
 USE sql_store;
 
+-- transactions are used to execute a series of SQL statements one after the other in a block
 -- transaction ensures all statements before commit are executed as a block
 -- transaction is ACID : 
 	-- Atomic - executed as a block or not
@@ -1735,6 +1737,10 @@ COMMIT;
     '$.age'
     )
     WHERE product_id = 1; 
+    
+    -- go through the videos on Designing Dataabses
+    -- Once a database is designed, we need to define the stored procedures, triggers
+    -- sometimes even funcitons and views are important, but while making views for storage make sure the constratin of updateble views is adhered to
     
     DROP DATABASE IF EXISTS sql_store2;
 	CREATE DATABASE IF NOT EXISTS sql_store2;

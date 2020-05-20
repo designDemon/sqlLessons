@@ -1,5 +1,5 @@
-CREATE VIEW vZorba_Leads
-AS
+-- CREATE VIEW vZorba_Leads
+-- AS
 SELECT pl.id
 	, pl.customer_id AS cust_c_id
     , c.name AS c_name
@@ -52,6 +52,7 @@ LEFT JOIN adminstrator a1
 	ON p.supervisor_id = a1.id
 LEFT JOIN adminstrator a2
 	ON pl.adminstrator_id = a2.id
+HAVING NULL
 ORDER BY pl.id;
 
 
@@ -1072,3 +1073,26 @@ WHERE
     AND source_thread_title IS NOT NULL 
     AND (pl.source = 'Organic' or pl.source = 'Manually') 
     AND(date(pl.created)>'2020-02-25' OR date(pl.modified)>'2020-02-25') ;
+    
+    
+-- I Dashboard
+-- a Unassigned Leads
+SELECT 
+	pl.project_id
+	, name
+    , code
+    , start_date
+    , end_date
+    , COUNT(*) AS total_leads
+    , SUM(CASE 
+		WHEN assiged_date IS NULL
+		THEN 1 ELSE 0 
+		END) AS Unassigned
+FROM project_leads pl
+JOIN projects p
+	ON pl.project_id = p.id
+GROUP BY project_id
+HAVING YEAR(start_date)>=2019 AND Unassigned>0;
+
+-- II Manage Team
+-- a 
