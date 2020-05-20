@@ -1095,4 +1095,115 @@ GROUP BY project_id
 HAVING YEAR(start_date)>=2019 AND Unassigned>0;
 
 -- II Manage Team
--- a 
+-- a fetch team member list
+-- can be packaged as a view
+CREATE OR REPLACE VIEW manage_team AS
+SELECT 
+		full_name AS name
+        , email
+        , role
+        , status
+        , created
+FROM adminstrator;
+
+-- b team member details edit
+-- b.1 get specific team-member details:
+DROP PROCEDURE IF EXISTS get_team_member_details;
+DELIMITER $$
+	CREATE PROCEDURE get_team_member_details
+    (
+		id INT(11)
+    )
+    BEGIN
+		SELECT
+			full_name AS name
+			, email
+            , status
+            , password
+        FROM adminstrator a
+        WHERE a.id = id;
+	END$$
+DELIMITER ;
+
+-- to check above procedure
+CALL get_team_member_details(264); 
+
+-- b.2 to update team_member_details
+DROP PROCEDURE IF EXISTS update_team_member_details;
+DELIMITER $$
+CREATE PROCEDURE update_team_member_details
+(
+	id INT(11)
+	, name VARCHAR(50)
+    , email VARCHAR(255)
+    , status VARCHAR(50)
+    , password VARCHAR(50)
+    
+)
+BEGIN
+    UPDATE	adminstrator a
+	SET a.full_name = IFNULL(name,a.full_name), 
+		a.email = IFNULL(email,a.email),
+        a.status = IFNULL(status, a.status),
+        a.password = IFNULL(password, a.password)
+	WHERE a.id = id;
+END$$
+DELIMITER ;
+
+-- to check above procedure
+CALL update_team_member_details(264, NULL, 'agent2.soulilution@gmail.com', NULL, NULL);
+
+-- b.3 to delete a team member
+-- better to delete from view or mark as inactive?
+DELETE FROM administrator
+WHERE id = $;
+
+-- b.4 new member
+
+
+-- III Manage Program
+-- a program list
+CREATE OR REPLACE VIEW manage_program AS
+SELECT 
+		p.id
+		, p.name
+        , code
+        , p.category
+        , auto_assign
+        , a.full_name as supervisor
+        , admin_id AS Enrollment_leads 
+        , checklist_is_done
+        , ch_t.title AS type
+        , start_date
+        , end_date
+FROM projects p
+JOIN category c
+	ON p.category = c.id
+JOIN checklist_types ch_t
+	ON p.ch_type = ch_t.id
+JOIN adminstrator a
+	ON p.supervisor_id = a.id;
+
+-- b new program
+-- c edit program
+
+-- IV Manage customer
+-- a customer list : with  name, email, phone, gender, banned, profile, source thread, project
+-- b new customer: with name, email, phone, gender selector , profile score selection and source thread selection
+-- c add as lead: with select program (list) and assign to (el) and interest level and campaign name and adset name
+
+-- V Manage Leads
+-- a records: interest score, profile score, cutomer details (n,e, gender, ph no,lead datetime), 
+				-- program name, assigned el name and assigned date, source,
+				-- campaign name, adset name, source thread
+                -- call logs, call status, call date and time, followup date and time, interest level, called by
+                -- material sent
+-- b add program lead: call new customer and add as lead
+-- c assign and unassign leads
+				-- call manage program view and change or assign enrollment lead
+                
+-- V Reports:
+	-- Program report by program name, enrolment lead, from date and to date, paginated by source
+			-- total leads, not called, called once, called more than once, follow-up, officng, hi, pip, paid
+    -- EL report by program name, el name and from date and to date
+			-- for different call status
