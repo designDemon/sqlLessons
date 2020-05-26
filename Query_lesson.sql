@@ -1031,6 +1031,9 @@ SELECT YEAR(NOW());
 SELECT DAYOFWEEK(NOW());
 SELECT DAYNAME(NOW());
 SELECT MONTHNAME(NOW());
+SELECT CURRENT_TIMESTAMP;
+-- OR
+SELECT CURRENT_TIMESTAMP();
 
 -- for portability in different sql systems, best to use extract
 SELECT EXTRACT(YEAR FROM NOW()); 
@@ -1628,7 +1631,7 @@ COMMIT;
     -- INT					4b
     -- BIGING				8b
     
-    -- ZEROFILL 
+    -- ZEROFILL - to prefix fixed no. of zeros
     -- INT(4) -> 0004
     
     -- RATIONALS

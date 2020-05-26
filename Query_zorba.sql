@@ -1077,6 +1077,7 @@ WHERE
     
 -- I Dashboard
 -- a Unassigned Leads
+CREATE OR REPLACE VIEW display_programs_with_unassigned_leads AS
 SELECT 
 	pl.project_id
 	, name
@@ -1150,15 +1151,32 @@ BEGIN
 END$$
 DELIMITER ;
 
--- to check above procedure
-CALL update_team_member_details(264, NULL, 'agent2.soulilution@gmail.com', NULL, NULL);
+-- b.3 to add new team_member_details
+DROP PROCEDURE IF EXISTS add_new_team_member;
+DELIMITER $$
+CREATE PROCEDURE add_new_team_member
+(
+	name VARCHAR(50)
+    , email VARCHAR(255)
+    , password VARCHAR(50)
+    , status ENUM('Active','Inactive')
+    
+)
+BEGIN
+    INSERT INTO	adminstrator (full_name, email, status, password)
+	VALUES (name, email, status, password);
+END$$
+DELIMITER ;
 
--- b.3 to delete a team member
+
+-- to check above procedures
+CALL update_team_member_details(264, NULL, 'agent2.soulilution@gmail.com', NULL, NULL);
+CALL add_new_team_member('Barkha2', 'barkha2@gmail.com', 'pass123', 'Inactive');
+
+-- b.4 to delete a team member
 -- better to delete from view or mark as inactive?
 DELETE FROM administrator
 WHERE id = $;
-
--- b.4 new member
 
 
 -- III Manage Program
@@ -1185,12 +1203,88 @@ JOIN adminstrator a
 	ON p.supervisor_id = a.id;
 
 -- b new program
+DROP PROCEDURE IF EXISTS add_new_program;
+DELIMITER $$
+CREATE PROCEDURE add_new_program(
+	name VARCHAR(50)
+    , code VARCHAR(50)
+    , auto_assign ENUM('Yes','No')
+    , type_id INT(2)
+    , category_id INT(2)
+    , el_ids VARCHAR(50)
+    , start_date DATE
+    , end_date DATE
+    , patra_link TEXT
+    , added_by_id INT
+	)
+BEGIN
+	INSERT INTO projects (name, code, auto_assign, ch_type, category, admin_id, start_date, end_date, patra, added_by_id)
+    VALUES (name, code, auto_assign, type_id, category_id, el_ids, start_date, end_date, patra_link, added_by_id);
+END$$
+
+DELIMITER ;
+
+-- check procedure
+CALL  add_new_program('abc', 'abc123', 'No', 3, 4, '224,334', '2021-02-28', '2021-03-29', 'http://www.xyz.com', 223);
+
 -- c edit program
 
 -- IV Manage customer
 -- a customer list : with  name, email, phone, gender, banned, profile, source thread, project
+
 -- b new customer: with name, email, phone, gender selector , profile score selection and source thread selection
+			-- use last 10 digits of phone no. to check if record exists, if it does, update same record, else insert new record
+DROP PROCEDURE IF EXISTS add_new_customer;
+DELIMITER $$
+CREATE PROCEDURE add_new_customer(
+	name VARCHAR(50)
+    , email VARCHAR(255)
+    , phone VARCHAR(255)
+    , gender ENUM('Male','Female')
+    , profile_score INT
+    , source_thread_id INT
+    -- , OUT id_checker INT
+	)
+BEGIN
+	DECLARE id_check INT;
+    
+    SELECT DISTINCT c.id INTO id_check FROM customers c WHERE c.phone LIKE CONCAT('%', RIGHT(phone,10), '%');
+    
+    IF id_check IS NULL
+    THEN
+		INSERT INTO customers (name, email, gender, phone,profile,source_thread_title)
+		VALUES (name, email, gender, phone,profile_score,source_thread_id);
+	ELSE
+		UPDATE customers c
+        SET  c.name = name, c.email = email, c.gender=gender, c.phone = CONCAT(c.phone,',',phone),c.profile=profile,c.source_thread_title=source_thread_id
+        WHERE c.id = id_check;
+	END IF;
+END$$
+DELIMITER ;
+
+-- check procedures
+CALL add_new_customer('Neeti2', 'chanananeeti@gmail.com', '919599620671', 'Female', 0, '1');
+CALL add_new_customer('Jeeti', 'chananajeeti@gmail.com', '919599699971', 'Male', 0, '1');
+CALL add_new_customer('Mitu mani', 'mitumani8@gmail.com', '919582299449', 'Male', 8, '1');
+-- test value id = 17598 phones = 9582299449,919582299449
+CALL add_new_customer('Shankar', 'shankar040996@gmail.com', '918851589463', 'Male', 0, '1');
+-- test value id = 11558 phones = 8851589463
+
+SET @id_checker = 0;
+CALL add_new_customer('Neeti2', 'chanananeeti@gmail.com', '919599620671', 'Female', 0, '1', @id_checker);
+SELECT @id_checker;
+
+SET @phone = '919599620671';
+SELECT c.id FROM customers c WHERE c.phone LIKE CONCAT('%', @phone, '%');
+
+SET @phone = '919582299449';
+SELECT * FROM customers c WHERE c.phone LIKE CONCAT('%', RIGHT(@phone,10), '%');
+
+
+SELECT * FROM customers c WHERE c.name LIKE CONCAT('%', 'shankar');
+
 -- c add as lead: with select program (list) and assign to (el) and interest level and campaign name and adset name
+				-- depending on where this procedure is called from, the campaign, source etc will be set accordingly
 
 -- V Manage Leads
 -- a records: interest score, profile score, cutomer details (n,e, gender, ph no,lead datetime), 
