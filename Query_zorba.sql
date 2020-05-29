@@ -1285,6 +1285,27 @@ SELECT * FROM customers c WHERE c.name LIKE CONCAT('%', 'shankar');
 
 -- c add as lead: with select program (list) and assign to (el) and interest level and campaign name and adset name
 				-- depending on where this procedure is called from, the campaign, source etc will be set accordingly
+DROP PROCEDURE IF EXISTS add_customer_as_lead;
+
+DELIMITER $$
+CREATE PROCEDURE add_customer_as_lead(
+	cust_id INT(11)
+    , proj_id INT(11)
+    , source VARCHAR(50)
+    , camp_name VARCHAR(50)
+    , ad_name VARCHAR(50)
+    , platform VARCHAR(50)
+    , create_date DATE
+	, mod_date DATE
+)
+BEGIN
+	INSERT INTO project_leads(customer_id , project_id, source, campaign_name, ad_name, platform, created, modified)
+    VALUES (cust_id, proj_id, source, camp_name, ad_name, platform, create_date, mod_date );
+END$$
+DELIMITER ;
+
+-- test procedure
+CALL add_customer_as_lead(66698, 18, 'Manually', 'Test', 'Test', 'None', '2020-05-29', '0000-00-00'); 
 
 -- V Manage Leads
 -- a records: interest score, profile score, cutomer details (n,e, gender, ph no,lead datetime), 
@@ -1295,6 +1316,23 @@ SELECT * FROM customers c WHERE c.name LIKE CONCAT('%', 'shankar');
 -- b add program lead: call new customer and add as lead
 -- c assign and unassign leads
 				-- call manage program view and change or assign enrollment lead
+DELIMITER $$
+CREATE PROCEDURE assign_lead_to_el(
+	cust_id INT(11)
+    , prog_id INT
+    , el_id INT(11)
+    , assigned_date DATE
+    , mod_date DATETIME
+)
+BEGIN
+	UPDATE project_leads pl
+    SET pl.adminstrator_id = el_id, pl.assiged_date = assigned_date, pl.modified = mod_date
+    WHERE pl.customer_id = cust_id and pl.project_id = prog_id;
+END$$
+DELIMITER ;
+
+-- test procedure
+CALL assign_lead_to_el(66698, 18, '234', '2020-05-29', '0000-00-00 00:00:00'); 
                 
 -- V Reports:
 	-- Program report by program name, enrolment lead, from date and to date, paginated by source
